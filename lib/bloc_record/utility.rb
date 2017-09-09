@@ -46,7 +46,7 @@ module BlocRecord
 
     def reload_obj(dirty_obj)
       # takes an object, finds its database record using the find method in the  Selection module.
-      persisted_obj = dirty_obj.class.find(dirty_obj.id)
+      persisted_obj = dirty_obj.class.find_one(dirty_obj.id)
       # overwrites the instance variable values with the stored values from the database.
       dirty_obj.instance_variables.each do |instance_variable|
         dirty_obj.instance_variable_set(instance_variable, persisted_obj.instance_variable_get(instance_variable))
