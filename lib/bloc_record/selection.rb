@@ -25,7 +25,7 @@ module Selection
     end
   end
 
-  # used for example: character = Character.find(7)
+  # used for example: book = AddressBook.find(7)
   def find_one(id)
     if id.is_a?(Integer) && id > 0
       row = connection.get_first_row <<-SQL
@@ -121,6 +121,70 @@ module Selection
 
     row_array = rows_to_array(rows)
     row_array
+  end
+
+  def where(*args)
+    # to handle array inputs
+    # e.g. Entry.where("phone_number = ?", [array_of_phonenumbers])
+    if args.count > 1
+      expression = args.shift # phone_number = ?
+      params = args # [array_of_phonenumbers]
+    else
+      case args.first
+      when String # Entry.where("phone_number = '999-999-9999'")
+        expression = args.first
+      when Hash # Entry.where(name: 'BlocHead')
+        expression_hash = BlocRecord::Utility.convert_keys(args.first) # "name"=>"BlocHead"
+        expression = expression_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ") # name='BlocHead'
+      end
+    end
+
+    sql = <<-SQL
+      SELECT #{columns.join ","} FROM #{table}
+      WHERE #{expression};
+    SQL
+
+    # connection.execute, handles the question mark replacement for us.
+    rows = connection.execute(sql, params)
+    rows_to_array(rows)
+  end
+
+  def order(*args)
+    # Entry.order("name", "phone_number") or Entry.order(:name, :phone_number)
+    if args.count > 1
+      order = args.join(",") #using join will convert Symbol into a string.
+    else # Entry.order("phone_number") or Entry.order(:phone_number)
+      order = args.first.to_s # If the order local variable is a Symbol, to_s will convert it to a string.
+    end
+    rows = connection.execute <<-SQL
+      SELECT * FROM #{table}
+      ORDER BY #{order};
+    SQL
+    rows_to_array(rows)
+  end
+
+  def join(*args) #join('department', 'compensation') or join(:department, :compensation)
+    if args.count > 1
+      # joins will equal multiple INNER JOIN/ON clauses
+      joins = args.map { |arg| "INNER JOIN #{arg} ON #{arg}.#{table}_id = #{table}.id"}.join(" ")
+      rows = connection.execute <<-SQL
+        SELECT * FROM #{table} #{joins}
+      SQL
+    else # join('department')
+      case args.first
+      when String
+        rows = connection.execute <<-SQL
+          SELECT * FROM #{table} #{BlocRecord::Utility.sql_strings(args.first)};
+        SQL
+      when Symbol # join(:department)
+        rows = connection.execute <<-SQL
+          SELECT * FROM #{table}
+          INNER JOIN #{args.first} ON #{args.first}.#{table}_id = #{table}.id
+        SQL
+      end
+    end
+
+    rows_to_array(rows)
   end
 
 # ******************************************************************************
