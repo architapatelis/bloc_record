@@ -150,12 +150,20 @@ module Selection
   end
 
   def order(*args)
-    # Entry.order("name", "phone_number") or Entry.order(:name, :phone_number)
-    if args.count > 1
-      order = args.join(",") #using join will convert Symbol into a string.
-    else # Entry.order("phone_number") or Entry.order(:phone_number)
-      order = args.first.to_s # If the order local variable is a Symbol, to_s will convert it to a string.
+    # order("name", :description, phone_number: :desc)
+    order_array = []
+    args.each do |arg|
+      case arg
+      when String
+        order_array << arg
+      when Symbol
+        order_array << arg.to_s
+      when Hash
+        order_array << arg.map{|key, value| "#{key} #{value}"}
+      end
     end
+    order = order_array.join(",") # order = ['name', 'description', 'phone_number desc']
+
     rows = connection.execute <<-SQL
       SELECT * FROM #{table}
       ORDER BY #{order};
@@ -181,9 +189,16 @@ module Selection
           SELECT * FROM #{table}
           INNER JOIN #{args.first} ON #{args.first}.#{table}_id = #{table}.id
         SQL
+      when Hash # join(comments: :guest)
+        key = args.first.keys.first #comments
+        value = args.first[key] # guest
+        rows = connection.execute <<-SQL
+          SELECT * FROM #{table}
+          INNER JOIN #{key} ON #{key}.#{table}_id = #{table}.id
+          INNER JOIN #{value} ON #{value}.#{key}_id = #{key}.id
+        SQL
       end
     end
-
     rows_to_array(rows)
   end
 

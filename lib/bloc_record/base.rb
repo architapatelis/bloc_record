@@ -10,7 +10,7 @@ require 'bloc_record/connection'
 module BlocRecord
   # base class named… Base. Users of our ORM will subclass Base when creating their model objects.
   class Base
-    ## include will allow methods defined in Persistence module to be used as instance methods. So any instance of class Base can use them. 
+    ## include will allow methods defined in Persistence module to be used as instance methods. So any instance of class Base can use them.
     include Persistence
     extend Selection
     extend Schema
