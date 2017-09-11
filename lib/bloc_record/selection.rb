@@ -213,9 +213,11 @@ module Selection
     end
   end
 
-  # Given an array of rows, this method maps the rows to an array of corresponding objects.
+  # convert rows in our database to an array
   def rows_to_array(rows)
-    rows.map { |row| new(Hash[columns.zip(row)]) }
+    collection = BlocRecord::Collection.new
+    rows.each { |row| collection << new(Hash[columns.zip(row)]) }
+    collection # return an array
   end
 
 
