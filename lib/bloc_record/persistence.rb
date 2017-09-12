@@ -50,6 +50,21 @@ module Persistence
     self.class.update(self.id, updates) # call private update method
   end
 
+  # e = Entry.all[3]
+  # e.update_name('Ben Johnson')
+  def method_missing(m, *args) # m is method_name
+    if m.match(/update_/)
+      attribute = m.to_s.split('update_')[1] # attribute = name
+      ## e.class is Entry
+      # Entry.column.include?(name)
+      if self.class.columns.include?(attribute)
+        self.class.update(self.id, { attribute => args.first } )
+      else
+        puts "#{attribute} does not exist in the database."
+      end
+    end
+  end
+
   module ClassMethods
     # attrs is a hash
     # look at checkpoint 2 for example.
@@ -78,29 +93,37 @@ module Persistence
       update(nil, updates)
     end
 
-    # e.g. Person.update(15, user_name: 'Samuel', group: 'expert')
+    # people = { 1 => { "first_name" => "David" }, 2 => { "first_name" => "Jeremy" } }
+    # Person.update(people.keys, people.values)
     def update(ids, updates)
-      # convert the non-id parameters to an array.
-      updates = BlocRecord::Utility.convert_keys(updates) # {"user_name"=>"Samuel", "group"=>"expert"}
-      updates.delete "id"
-      # convert updates to an array of strings where each string is in the format "KEY=VALUE".
-      # ["user_name = Samuel", "group = expert"]
-      updates_array = updates.map { |key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}" }
+      if updates.class == Array # update([1,2], [{"first_name"=>"David"}, {"first_name"=>"Jeremy"}])
+        updates.each_with_index do |update, index|
+          update(ids[index], update) # update(1, {"first_name"=>"David"})
+        end
+      elsif updates.class == Hash # e.g. update(ids, user_name: 'Samuel', group: 'expert')
+        # convert the non-id parameters to an array.
+        updates = BlocRecord::Utility.convert_keys(updates) # {"user_name"=>"Samuel", "group"=>"expert"}
+        updates.delete "id"
+        # convert updates to an array of strings where each string is in the format "KEY=VALUE".
+        # ["user_name = Samuel", "group = expert"]
+        updates_array = updates.map { |key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}" }
 
-      # appending ids in the form of a string to the WHERE clause.
-      if ids.class == Fixnum
-        where_clause = "WHERE id = #{ids};"
-      elsif ids.class == Array
-        where_clause = ids.empty? ? ";" : "WHERE id IN (#{ids.join(",")});"
-      else
-        where_clause = ";"
+        # appending ids in the form of a string to the WHERE clause.
+        if ids.class == Fixnum
+          where_clause = "WHERE id = #{ids};"
+        elsif ids.class == Array
+          where_clause = ids.empty? ? ";" : "WHERE id IN (#{ids.join(",")});"
+        else
+          where_clause = ";"
+        end
+
+        connection.execute <<-SQL
+          UPDATE #{table}
+          SET #{updates_array * ","} #{where_clause}
+        SQL
+
+        true
       end
-      connection.execute <<-SQL
-        UPDATE #{table}
-        SET #{updates_array * ","} #{where_clause}
-      SQL
-
-      true
     end
   end
 end

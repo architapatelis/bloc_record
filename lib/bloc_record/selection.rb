@@ -220,19 +220,6 @@ module Selection
     collection # return an array
   end
 
-
-  def method_missing(m, *args) # m refers to name_of_method
-    # e.g. find_by_name
-    if m.match(/find_by_/)
-      dynamic_name = m.to_s.split('find_by_')[1] # dynamic_name = name
-      if columns.include?(dynamic_name) #if table includes a column called 'name'
-        find_by(dynamic_name, *args) # find_by(name, *args)
-      else
-        raise "#{m} is not a valid method."
-      end
-    end
-  end
-
   def retrieve_records(options)
     start = options.has_key?(:start) ? options[:start] : nil # start at 2000
     batch_size = options.has_key?(:batch_size) ? options[:batch_size] : nil #batch_size is 2000, (from 2001 to at most 4000)
@@ -265,4 +252,17 @@ module Selection
       SQL
     end
   end
+
+  def method_missing(m, *args) # m refers to name_of_method
+    # e.g. find_by_name
+    if m.match(/find_by_/)
+      dynamic_name = m.to_s.split('find_by_')[1] # dynamic_name = name
+      if columns.include?(dynamic_name) #if table includes a column called 'name'
+        self.find_by(dynamic_name, *args) # find_by(name, *args)
+      else
+        raise "#{m} is not a valid method."
+      end
+    end
+  end
+
 end
