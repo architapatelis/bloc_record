@@ -1,4 +1,5 @@
 require 'sqlite3'
+
 # Inflector transforms words from:
   # singular to plural,
   # class names to table names,
@@ -16,8 +17,8 @@ module Associations
     define_method(association) do
       #2 e.g. SELECT * FROM entry WHERE address_book_id = 123
       rows = self.class.connection.execute <<-SQL
-       SELECT * FROM #{association.to_s.singularize}
-       WHERE #{self.class.table}_id = #{self.id}
+        SELECT * FROM #{association.to_s.singularize}
+        WHERE #{self.class.table}_id = #{self.id}
       SQL
 
       #3 we create a new class name.
@@ -29,7 +30,7 @@ module Associations
 
       #4 iterate each SQL record returned, and serialize it into an Entry object, which is added to collection.
       rows.each do |row|
-       collection << class_name.new(Hash[class_name.columns.zip(row)])
+        collection << class_name.new(Hash[class_name.columns.zip(row)])
       end
 
       #5 return an array of entries where the address_book_id = 123
@@ -51,6 +52,27 @@ module Associations
 
       # class_name = AddressBook
       class_name = association_name.classify.constantize
+
+      # because there's only one object, we don't create a Collection; we just return the serialized object.
+      if row
+        data = Hash[class_name.columns.zip(row)]
+        class_name.new(data)
+      end
+    end
+  end
+
+  # e.g. a user has_one :account
+  # association is account
+  # self is an instance of class User
+  def has_one(association)
+    define_method(association) do
+      # SELECT * FROM account WHERE user_id = 123
+      row = self.class.connection.get_first_row <<-SQL
+        SELECT * FROM #{association.to_s}
+        WHERE #{self.class.table}_id = #{self.id}
+      SQL
+
+      class_name = association.to_s.classify.constantize
 
       # because there's only one object, we don't create a Collection; we just return the serialized object.
       if row
