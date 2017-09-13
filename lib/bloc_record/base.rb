@@ -6,6 +6,7 @@ require 'bloc_record/persistence'
 require 'bloc_record/selection'
 require 'bloc_record/connection'
 require 'bloc_record/collection'
+require 'bloc_record/associations'
 
 module BlocRecord
   # base class named… Base. Users of our ORM will subclass Base when creating their model objects.
@@ -15,6 +16,7 @@ module BlocRecord
     extend Selection
     extend Schema
     extend Connection
+    extend Associations
 
     def initialize(options={})
       # converts all the keys to string keys
