@@ -151,18 +151,32 @@ module Persistence
       true
     end
 
-    # e.g. Entry.destroy_all or Entry.destroy_all(name: "Jane Doe")
-    # DESTROY will apply to all records if the command isn't scoped using WHERE.
-    def destroy_all(conditions_hash=nil)
-      if conditions_hash && !conditions_hash.empty? # if conditions are given
-        conditions_hash = BlocRecord::Utility.convert_keys(conditions_hash)
-        conditions = conditions_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ") #"name = Jane"
+    def destroy_all(*args)
+      # to handle array inputs
+      # e.g. Entry.destroy_all("phone_number = ?", [array_of_phonenumbers])
 
-        connection.execute <<-SQL
+      if args && !args.empty? # if conditions are given
+        if args.count > 1
+          puts "I should be in here: "
+          expression = args.shift # phone_number = ?
+          params = args # [array_of_phonenumbers]
+        else
+          case args.first
+          when String # Entry.destroy_all("phone_number = '999-999-9999'")
+            expression = args.first
+          when Hash # Entry.destroy_all(name: 'Jane')
+            expression_hash = BlocRecord::Utility.convert_keys(args.first)
+            expression = expression_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ") #"name = Jane"
+          end
+        end
+
+        sql = <<-SQL
           DELETE FROM #{table}
-          WHERE #{conditions};
+          WHERE #{expression};
         SQL
-      else
+
+        rows_to_destroy = connection.execute(sql, params)
+      else # when no conditions are given
         connection.execute <<-SQL
           DELETE FROM #{table}
         SQL

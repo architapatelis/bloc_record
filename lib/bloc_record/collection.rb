@@ -59,5 +59,19 @@ module BlocRecord
       string = "id IN (#{ids.join ","}) AND #{expression}"
       self.any? ? self.first.class.where(string) : false
     end
+
+    # Entry.where(name: "Kate Smith").destroy_all
+    # Entry.where(name: "Kate Smith") will return an array of rows where name = Kate Smith
+    def destroy(*args)
+      ids = self.map(&:id)
+      self.any? ? self.first.class.destroy(ids.first) : false
+    end
+
+    def destroy_all
+      self.each do |element|
+        element.destroy
+        puts "#{element} was deleted from the database"
+      end
+    end
   end
 end
